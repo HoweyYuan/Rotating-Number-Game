@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旋转数谜 - 双人对战版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", "PingFang SC", sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e8f4f8 100%);
+            padding: 20px;
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: #1e293b;
+        }
+
+        /* 全局动画定义 */
+        @keyframes glow {
+            0% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.5); }
+            100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        @keyframes numberPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 头部样式 */
+        .game-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.1);
+        }
+
+        .game-header h1 {
+            color: #3b82f6;
+            font-size: 38px;
+            margin-bottom: 12px;
+            text-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+            animation: glow 2s infinite;
+        }
+
+        .game-header p {
+            color: #64748b;
+            font-size: 16px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* 玩家姓名输入区 */
+        .player-names {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .name-input {
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            font-size: 16px;
+            width: 200px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .name-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+        }
+
+        .name-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        /* 游戏主容器 */
+        .game-wrapper {
+            max-width: 1300px;
+            margin: 0 auto;
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        /* 玩家区域样式 */
+        .player-section {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            border-radius: 24px;
+            padding: 35px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.5s ease;
+            border: 1px solid rgba(59, 130, 246, 0.1);
+        }
+
+        .player-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            opacity: 0.7;
+        }
+
+        .player-section.winner {
+            box-shadow: 0 0 40px rgba(34, 197, 94, 0.2), 0 15px 30px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .player-section.winner::before {
+            background: linear-gradient(90deg, #22c55e, #84cc16);
+            opacity: 1;
+        }
+
+        .player-section.loser {
+            opacity: 0.7;
+            pointer-events: none;
+            filter: grayscale(20%);
+        }
+
+        .player-title {
+            text-align: center;
+            font-size: 28px;
+            color: #1e293b;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            position: relative;
+        }
+
+        .player-title::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 1px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+        }
+
+        .player-section.winner .player-title {
+            color: #22c55e;
+            text-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+        }
+
+        .player-section.winner .player-title::after {
+            background: linear-gradient(90deg, #22c55e, #84cc16);
+            width: 120px;
+        }
+
+        /* 中间控制区 */
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 25px;
+            padding: 25px;
+            min-width: 200px;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.1);
+        }
+
+        .difficulty-select {
+            width: 100%;
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            font-size: 17px;
+            background: white;
+            color: #1e293b;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .difficulty-select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+        }
+
+        .difficulty-select option {
+            background: white;
+            color: #1e293b;
+            padding: 10px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px 0;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 20px rgba(34, 197, 94, 0.15);
+            animation: pulse 1.5s infinite;
+        }
+
+        .reset-btn, .restart-btn {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+        }
+
+        .reset-btn:hover, .restart-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 20px rgba(249, 115, 22, 0.15);
+            animation: pulse 1.5s infinite;
+        }
+
+        .score-board {
+            background: linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%);
+            padding: 20px 25px;
+            border-radius: 15px;
+            text-align: center;
+            width: 100%;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .score-board h3 {
+            color: #64748b;
+            margin-bottom: 10px;
+            font-size: 17px;
+        }
+
+        .score-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #3b82f6;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+            animation: pulse 2s infinite;
+        }
+
+        .player-section.winner .score-value {
+            color: #22c55e;
+            text-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+        }
+
+        .time-text {
+            font-size: 16px;
+            color: #64748b;
+            margin-top: 10px;
+        }
+
+        /* 数字盘核心样式 */
+        .puzzle-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            position: relative;
+            min-height: 220px;
+            width: 100%;
+        }
+
+        .number-grid {
+            display: grid;
+            gap: 5px;
+            position: relative;
+            background: #f8fafc;
+            padding: 8px;
+            border-radius: 15px;
+            box-shadow: inset 0 5px 15px rgba(0, 0, 0, 0.03);
+            margin: 0 auto;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .cell-wrapper {
+            position: relative;
+            width: 65px;
+            height: 65px;
+        }
+
+        .number-cell {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border-radius: 10px;
+            font-size: 22px;
+            font-weight: bold;
+            color: #1e293b;
+            transition: all 0.4s ease;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            animation: numberPop 0.5s ease;
+        }
+
+        .number-cell.correct {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            color: #22c55e;
+            transform: scale(1.05);
+            box-shadow: 0 8px 15px rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            text-shadow: 0 0 10px rgba(34, 197, 94, 0.1);
+        }
+
+        .number-cell:hover {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(59, 130, 246, 0.1);
+        }
+
+        /* 旋转按钮 - 极致精美 */
+        .rotate-btn-group {
+            position: absolute;
+            z-index: 10;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.2);
+            transition: all 0.3s ease;
+            outline: none;
+            transform: translate(-50%, -50%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .rotate-btn-group:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translate(-50%, -50%) scale(1.2) rotate(15deg);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .rotate-btn-group:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        /* 操作按钮区 */
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .check-btn {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 8px 15px rgba(59, 130, 246, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .check-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .check-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 20px rgba(59, 130, 246, 0.2);
+            animation: pulse 1.5s infinite;
+        }
+
+        .check-btn:hover::before {
+            left: 100%;
+        }
+
+        .check-btn:disabled {
+            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            animation: none;
+            color: #94a3b8;
+        }
+
+        /* 获胜特效 - 超炫酷 */
+        .win-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        .win-container {
+            text-align: center;
+            position: relative;
+            z-index: 10;
+            padding: 50px;
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 0 50px rgba(34, 197, 94, 0.15);
+            border: 2px solid rgba(34, 197, 94, 0.2);
+            animation: float 3s infinite ease-in-out, fadeIn 0.8s ease;
+        }
+
+        .win-text {
+            font-size: 80px;
+            color: #22c55e;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(34, 197, 94, 0.3), 0 0 40px rgba(34, 197, 94, 0.1);
+            animation: glow 2s infinite, pulse 1.5s infinite;
+            margin-bottom: 20px;
+        }
+
+        .win-player {
+            font-size: 50px;
+            color: #1e293b;
+            text-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
+            margin-bottom: 30px;
+            animation: float 2s infinite ease-in-out;
+        }
+
+        .win-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            color: #64748b;
+            font-size: 18px;
+        }
+
+        .win-stat-item {
+            text-align: center;
+        }
+
+        .win-stat-value {
+            color: #3b82f6;
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        /* 粒子和彩带动画 */
+        .particle, .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            opacity: 0;
+            animation: particleAnim 3s forwards;
+        }
+
+        .confetti {
+            width: 15px;
+            height: 5px;
+            border-radius: 2px;
+            opacity: 1;
+            animation: confetti 3s forwards linear;
+        }
+
+        @keyframes particleAnim {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--x), var(--y)) scale(0);
+            }
+        }
+
+        /* 排行榜容器 */
+        .leaderboards-container {
+            max-width: 1200px;
+            margin: 40px auto 0;
+            display: none;
+            gap: 20px;
+            flex-wrap: wrap;
+            animation: fadeIn 0.8s ease;
+        }
+
+        /* 排行榜样式 - 按难度区分 */
+        .leaderboard {
+            flex: 1;
+            min-width: 280px;
+            background: white;
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.1);
+        }
+
+        /* 不同难度排行榜的顶部标识色 */
+        .leaderboard-easy {
+            border-top: 4px solid #10b981;
+        }
+
+        .leaderboard-medium {
+            border-top: 4px solid #3b82f6;
+        }
+
+        .leaderboard-hard {
+            border-top: 4px solid #ef4444;
+        }
+
+        .leaderboard h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            position: relative;
+            padding-bottom: 12px;
+        }
+
+        .leaderboard-easy h2 {
+            color: #10b981;
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+        }
+
+        .leaderboard-medium h2 {
+            color: #3b82f6;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+        }
+
+        .leaderboard-hard h2 {
+            color: #ef4444;
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
+        }
+
+        .leaderboard h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 1px;
+        }
+
+        .leaderboard-easy h2::after {
+            background: linear-gradient(90deg, #10b981, #34d399);
+        }
+
+        .leaderboard-medium h2::after {
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        }
+
+        .leaderboard-hard h2::after {
+            background: linear-gradient(90deg, #ef4444, #f87171);
+        }
+
+        .rank-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #f8fafc;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        }
+
+        .rank-table th {
+            padding: 15px 10px;
+            text-align: center;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            color: #1e293b;
+            font-weight: bold;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .rank-table td {
+            padding: 15px 10px;
+            text-align: center;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            font-size: 14px;
+            transition: background 0.3s ease;
+            color: #1e293b;
+        }
+
+        .rank-table tr:hover td {
+            background: #eff6ff;
+        }
+
+        .rank-table .winner {
+            color: #22c55e;
+            font-weight: bold;
+            font-size: 15px;
+            text-shadow: 0 0 5px rgba(34, 197, 94, 0.1);
+        }
+
+        .rank-table .best-time {
+            color: #f97316;
+            font-weight: bold;
+        }
+
+        .rank-history {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #64748b;
+            text-align: center;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 重新开始按钮区域 */
+        .restart-area {
+            text-align: center;
+            margin: 30px auto;
+            max-width: 300px;
+        }
+
+        .restart-btn {
+            padding: 18px 60px;
+            font-size: 20px;
+            border-radius: 15px;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .game-wrapper {
+                flex-direction: column;
+            }
+
+            .control-panel {
+                order: -1;
+                width: 100%;
+            }
+
+            .cell-wrapper {
+                width: 55px;
+                height: 55px;
+            }
+
+            .number-cell {
+                font-size: 20px;
+            }
+
+            .rotate-btn-group {
+                width: 28px;
+                height: 28px;
+                font-size: 16px;
+            }
+
+            .win-text {
+                font-size: 50px;
+            }
+
+            .win-player {
+                font-size: 35px;
+            }
+
+            .win-stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .leaderboards-container {
+                flex-direction: column;
+                padding: 0 10px;
+            }
+
+            .leaderboard {
+                width: 100%;
+            }
+
+            .rank-table th, .rank-table td {
+                padding: 10px 5px;
+                font-size: 12px;
+            }
+
+            .player-names {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .name-input {
+                width: 80%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-header">
+        <h1>旋转数谜 - 双人对战版</h1>
+        <p>点击2x2方块组中心按钮旋转 | 每归位1个数字+1分 | 先完成者获胜 | 明亮炫酷特效体验</p>
+        
+        <!-- 玩家姓名输入区 -->
+        <div class="player-names">
+            <div>
+                <label class="name-label" for="player1Name">玩家1姓名</label>
+                <input type="text" id="player1Name" class="name-input" placeholder="请输入姓名" value="玩家1">
+            </div>
+            <div>
+                <label class="name-label" for="player2Name">玩家2姓名</label>
+                <input type="text" id="player2Name" class="name-input" placeholder="请输入姓名" value="玩家2">
+            </div>
+        </div>
+    </div>
+
+    <div class="game-wrapper">
+        <!-- 玩家1区域 -->
+        <div class="player-section" id="player1">
+            <h2 class="player-title" id="player1Title">玩家1</h2>
+            <div class="score-board">
+                <h3>当前得分</h3>
+                <div class="score-value" id="score1">0</div>
+                <div class="time-text" id="time1">用时: 0s</div>
+            </div>
+            <div class="puzzle-container" id="puzzle1">
+                <div class="number-grid" id="grid1"></div>
+            </div>
+            <div class="action-buttons">
+                <button class="check-btn" id="check1" onclick="checkAnswer(1)" disabled>验证答案</button>
+            </div>
+        </div>
+
+        <!-- 中间控制区域 -->
+        <div class="control-panel">
+            <select class="difficulty-select" id="difficulty">
+                <option value="3">简单 (3x3)</option>
+                <option value="4" selected>中等 (4x4)</option>
+                <option value="5">困难 (5x5)</option>
+            </select>
+            <button class="btn start-btn" onclick="startGame()">开始对战</button>
+            <button class="btn reset-btn" onclick="resetGame()">重置游戏</button>
+            <div class="score-board">
+                <h3>游戏状态</h3>
+                <div id="game-status">未开始</div>
+            </div>
+        </div>
+
+        <!-- 玩家2区域 -->
+        <div class="player-section" id="player2">
+            <h2 class="player-title" id="player2Title">玩家2</h2>
+            <div class="score-board">
+                <h3>当前得分</h3>
+                <div class="score-value" id="score2">0</div>
+                <div class="time-text" id="time2">用时: 0s</div>
+            </div>
+            <div class="puzzle-container" id="puzzle2">
+                <div class="number-grid" id="grid2"></div>
+            </div>
+            <div class="action-buttons">
+                <button class="check-btn" id="check2" onclick="checkAnswer(2)" disabled>验证答案</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 获胜特效区域 -->
+    <div class="win-effect" id="winEffect">
+        <div class="win-container">
+            <div class="win-text">🎉 恭喜获胜！ 🎉</div>
+            <div class="win-player" id="winPlayer">玩家1</div>
+            <div class="win-stats">
+                <div class="win-stat-item">
+                    <div>总用时</div>
+                    <div class="win-stat-value" id="winTime">0s</div>
+                </div>
+                <div class="win-stat-item">
+                    <div>最终得分</div>
+                    <div class="win-stat-value" id="winScore">0</div>
+                </div>
+                <div class="win-stat-item">
+                    <div>难度</div>
+                    <div class="win-stat-value" id="winDifficulty">4x4</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 排行榜容器（三个难度） -->
+    <div class="leaderboards-container" id="leaderboardsContainer">
+        <!-- 简单难度排行榜 -->
+        <div class="leaderboard leaderboard-easy">
+            <h2>简单难度 (3x3) 排行榜</h2>
+            <table class="rank-table">
+                <thead>
+                    <tr>
+                        <th>排名</th>
+                        <th>玩家姓名</th>
+                        <th>总用时(秒)</th>
+                        <th>最后更新</th>
+                    </tr>
+                </thead>
+                <tbody id="rank-body-easy">
+                    <tr><td colspan="4" style="color: #94a3b8;">暂无记录</td></tr>
+                </tbody>
+            </table>
+            <div class="rank-history" id="rank-history-easy">记录数: 0 | 最快用时: --</div>
+        </div>
+
+        <!-- 中等难度排行榜 -->
+        <div class="leaderboard leaderboard-medium">
+            <h2>中等难度 (4x4) 排行榜</h2>
+            <table class="rank-table">
+                <thead>
+                    <tr>
+                        <th>排名</th>
+                        <th>玩家姓名</th>
+                        <th>总用时(秒)</th>
+                        <th>最后更新</th>
+                    </tr>
+                </thead>
+                <tbody id="rank-body-medium">
+                    <tr><td colspan="4" style="color: #94a3b8;">暂无记录</td></tr>
+                </tbody>
+            </table>
+            <div class="rank-history" id="rank-history-medium">记录数: 0 | 最快用时: --</div>
+        </div>
+
+        <!-- 困难难度排行榜 -->
+        <div class="leaderboard leaderboard-hard">
+            <h2>困难难度 (5x5) 排行榜</h2>
+            <table class="rank-table">
+                <thead>
+                    <tr>
+                        <th>排名</th>
+                        <th>玩家姓名</th>
+                        <th>总用时(秒)</th>
+                        <th>最后更新</th>
+                    </tr>
+                </thead>
+                <tbody id="rank-body-hard">
+                    <tr><td colspan="4" style="color: #94a3b8;">暂无记录</td></tr>
+                </tbody>
+            </table>
+            <div class="rank-history" id="rank-history-hard">记录数: 0 | 最快用时: --</div>
+        </div>
+    </div>
+
+    <!-- 重新开始按钮 -->
+    <div class="restart-area">
+        <button class="btn restart-btn" onclick="resetGame()">再来一局</button>
+    </div>
+
+    <script>
+        // 全局游戏状态
+        const gameState = {
+            isStarted: false,
+            difficulty: 4,
+            timer: null,
+            winner: 0,
+            winnerName: '',
+            grids: {
+                1: { 
+                    numbers: [], target: [], startTime: 0, endTime: 0, 
+                    score: 0, completed: false, rotateCount: 0, name: '玩家1' 
+                },
+                2: { 
+                    numbers: [], target: [], startTime: 0, endTime: 0, 
+                    score: 0, completed: false, rotateCount: 0, name: '玩家2' 
+                }
+            },
+            // 按难度存储排行榜数据，结构：{ 玩家名: { time: 用时, updateTime: 更新时间 } }
+            leaderboardData: {
+                3: {}, // 简单难度
+                4: {}, // 中等难度
+                5: {}  // 困难难度
+            }
+        };
+
+        // 尺寸常量
+        const CELL_SIZE = 65;
+        const CELL_GAP = 5;
+        const BTN_SIZE = 32;
+
+        // 初始化游戏
+        function initGame() {
+            // 获取玩家姓名
+            const player1Name = document.getElementById('player1Name').value.trim() || '玩家1';
+            const player2Name = document.getElementById('player2Name').value.trim() || '玩家2';
+            
+            // 更新玩家标题
+            document.getElementById('player1Title').textContent = player1Name;
+            document.getElementById('player2Title').textContent = player2Name;
+            
+            const difficulty = parseInt(document.getElementById('difficulty').value);
+            gameState.difficulty = difficulty;
+            gameState.isStarted = true;
+            gameState.winner = 0;
+            gameState.winnerName = '';
+
+            // 重置玩家状态
+            for (let player = 1; player <= 2; player++) {
+                gameState.grids[player].name = player === 1 ? player1Name : player2Name;
+                generatePuzzle(player);
+                renderGrid(player);
+                gameState.grids[player].completed = false;
+                gameState.grids[player].score = 0;
+                gameState.grids[player].rotateCount = 0;
+                document.getElementById(`score${player}`).textContent = '0';
+                document.getElementById(`time${player}`).textContent = '用时: 0s';
+                document.getElementById(`check${player}`).disabled = false;
+                document.getElementById(`player${player}`).classList.remove('winner', 'loser');
+            }
+
+            // 启动实时计时
+            startRealTimeTimer();
+
+            document.getElementById('game-status').textContent = '🔥 对战中 🔥';
+            document.getElementById('leaderboardsContainer').style.display = 'none';
+            document.getElementById('winEffect').style.display = 'none';
+            
+            // 播放开始音效（模拟）
+            playSound('start');
+        }
+
+        // 生成随机打乱的数谜
+        function generatePuzzle(player) {
+            const size = gameState.difficulty;
+            const numbers = [];
+            const target = [];
+
+            // 生成目标有序数组
+            for (let i = 0; i < size; i++) {
+                target[i] = [];
+                numbers[i] = [];
+                for (let j = 0; j < size; j++) {
+                    target[i][j] = i * size + j + 1;
+                    numbers[i][j] = target[i][j];
+                }
+            }
+
+            // 随机打乱
+            const shuffleTimes = size * 4;
+            for (let i = 0; i < shuffleTimes; i++) {
+                const row = Math.floor(Math.random() * (size - 1));
+                const col = Math.floor(Math.random() * (size - 1));
+                rotateBlock(numbers, row, col);
+            }
+
+            gameState.grids[player].numbers = JSON.parse(JSON.stringify(numbers));
+            gameState.grids[player].target = target;
+            gameState.grids[player].startTime = Date.now();
+        }
+
+        // 渲染数字盘
+        function renderGrid(player) {
+            const gridElement = document.getElementById(`grid${player}`);
+            const puzzleContainer = document.getElementById(`puzzle${player}`);
+            const numbers = gameState.grids[player].numbers;
+            const target = gameState.grids[player].target;
+            const size = gameState.difficulty;
+
+            // 清空内容
+            gridElement.innerHTML = '';
+            document.querySelectorAll(`#puzzle${player} .rotate-btn-group`).forEach(btn => btn.remove());
+
+            // 设置网格尺寸
+            gridElement.style.gridTemplateColumns = `repeat(${size}, ${CELL_SIZE}px)`;
+            gridElement.style.width = `${size * CELL_SIZE + (size - 1) * CELL_GAP + 16}px`;
+            gridElement.style.height = `${size * CELL_SIZE + (size - 1) * CELL_GAP + 16}px`;
+
+            // 生成数字单元格
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    const cellWrapper = document.createElement('div');
+                    cellWrapper.className = 'cell-wrapper';
+                    
+                    const cell = document.createElement('div');
+                    cell.className = 'number-cell';
+                    if (numbers[i][j] === target[i][j]) {
+                        cell.classList.add('correct');
+                    }
+                    cell.textContent = numbers[i][j];
+                    cellWrapper.appendChild(cell);
+                    gridElement.appendChild(cellWrapper);
+                }
+            }
+
+            // 计算数字盘偏移
+            const gridRect = gridElement.getBoundingClientRect();
+            const containerRect = puzzleContainer.getBoundingClientRect();
+            const gridOffsetX = gridRect.left - containerRect.left + 8;
+            const gridOffsetY = gridRect.top - containerRect.top + 8;
+
+            // 添加旋转按钮（精准居中）
+            for (let i = 0; i < size - 1; i++) {
+                for (let j = 0; j < size - 1; j++) {
+                    const btn = document.createElement('button');
+                    btn.className = 'rotate-btn-group';
+                    btn.innerHTML = '↻';
+                    
+                    // 精准居中计算
+                    const blockCenterX = gridOffsetX + j * (CELL_SIZE + CELL_GAP) + (CELL_SIZE + CELL_GAP);
+                    const blockCenterY = gridOffsetY + i * (CELL_SIZE + CELL_GAP) + (CELL_SIZE + CELL_GAP);
+                    
+                    btn.style.left = `${blockCenterX}px`;
+                    btn.style.top = `${blockCenterY}px`;
+                    btn.onclick = () => {
+                        playSound('rotate');
+                        rotatePlayerBlock(player, i, j);
+                    };
+                    puzzleContainer.appendChild(btn);
+                }
+            }
+
+            // 更新得分
+            updateScore(player);
+        }
+
+        // 旋转区块
+        function rotatePlayerBlock(player, row, col) {
+            if (!gameState.isStarted || gameState.winner !== 0) return;
+
+            const grid = gameState.grids[player];
+            rotateBlock(grid.numbers, row, col);
+            grid.rotateCount++;
+            renderGrid(player);
+        }
+
+        // 核心旋转逻辑
+        function rotateBlock(grid, row, col) {
+            const temp = grid[row][col];
+            grid[row][col] = grid[row + 1][col];
+            grid[row + 1][col] = grid[row + 1][col + 1];
+            grid[row + 1][col + 1] = grid[row][col + 1];
+            grid[row][col + 1] = temp;
+        }
+
+        // 更新得分
+        function updateScore(player) {
+            const grid = gameState.grids[player];
+            const size = gameState.difficulty;
+            let correctCount = 0;
+
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    if (grid.numbers[i][j] === grid.target[i][j]) {
+                        correctCount++;
+                    }
+                }
+            }
+
+            grid.score = correctCount;
+            document.getElementById(`score${player}`).textContent = correctCount;
+
+            // 全部归位自动验证
+            if (correctCount === size * size && !grid.completed) {
+                checkAnswer(player);
+            }
+        }
+
+        // 实时计时
+        function startRealTimeTimer() {
+            if (gameState.timer) clearInterval(gameState.timer);
+
+            gameState.timer = setInterval(() => {
+                if (!gameState.isStarted || gameState.winner !== 0) return;
+
+                for (let player = 1; player <= 2; player++) {
+                    if (gameState.grids[player].completed) continue;
+                    
+                    const now = Date.now();
+                    const timeUsed = Math.floor((now - gameState.grids[player].startTime) / 1000);
+                    document.getElementById(`time${player}`).textContent = `用时: ${timeUsed}s`;
+                }
+            }, 1000);
+        }
+
+        // 验证答案
+        function checkAnswer(player) {
+            if (!gameState.isStarted || gameState.winner !== 0) return;
+            const grid = gameState.grids[player];
+            if (grid.completed) return;
+
+            const isAllCorrect = JSON.stringify(grid.numbers) === JSON.stringify(grid.target);
+            
+            if (isAllCorrect) {
+                // 标记完成
+                grid.completed = true;
+                grid.endTime = Date.now();
+                const timeUsed = Math.floor((grid.endTime - grid.startTime) / 1000);
+                
+                // 判定胜者
+                gameState.winner = player;
+                gameState.winnerName = grid.name;
+                gameState.isStarted = false;
+                
+                // 停止计时
+                clearInterval(gameState.timer);
+                
+                // 播放胜利音效
+                playSound('win');
+                
+                // 显示获胜特效（3秒）
+                showWinEffect(player, timeUsed);
+                
+                // 更新玩家状态
+                document.getElementById(`player${player}`).classList.add('winner');
+                const loserPlayer = player === 1 ? 2 : 1;
+                document.getElementById(`player${loserPlayer}`).classList.add('loser');
+                document.getElementById(`check${loserPlayer}`).disabled = true;
+                
+                // 记录败者用时（仅用于状态，不入库）
+                gameState.grids[loserPlayer].endTime = Date.now();
+                
+                // 3秒后自动切换到排行榜
+                setTimeout(() => {
+                    // 隐藏胜利特效
+                    document.getElementById('winEffect').style.display = 'none';
+                    // 更新对应难度的排行榜
+                    updateLeaderboard(gameState.difficulty, gameState.winnerName, timeUsed);
+                    // 显示所有排行榜
+                    document.getElementById('leaderboardsContainer').style.display = 'flex';
+                }, 3000);
+            } else {
+                playSound('error');
+                alert(`❌ ${gameState.grids[player].name}还有数字未归位，请继续调整！`);
+            }
+        }
+
+        // 超炫酷获胜特效（3秒）
+        function showWinEffect(player, timeUsed) {
+            const winEffect = document.getElementById('winEffect');
+            const winPlayer = document.getElementById('winPlayer');
+            const winTime = document.getElementById('winTime');
+            const winScore = document.getElementById('winScore');
+            const winDifficulty = document.getElementById('winDifficulty');
+            
+            // 更新获胜信息
+            winPlayer.textContent = gameState.winnerName;
+            winTime.textContent = `${timeUsed}s`;
+            winScore.textContent = gameState.grids[player].score;
+            winDifficulty.textContent = `${gameState.difficulty}x${gameState.difficulty}`;
+            
+            // 显示特效容器
+            winEffect.style.display = 'flex';
+            
+            // 创建粒子和彩带特效（3秒）
+            createParticles(200);
+            createConfetti(150);
+            
+            // 更新游戏状态
+            document.getElementById('game-status').textContent = `🏆 ${gameState.winnerName}获胜！ 🏆`;
+        }
+
+        // 创建粒子特效
+        function createParticles(count) {
+            const winEffect = document.getElementById('winEffect');
+            document.querySelectorAll('.particle').forEach(p => p.remove());
+            
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                // 随机方向和颜色
+                const x = Math.random() * 200 - 100;
+                const y = Math.random() * 200 - 100;
+                const colors = ['#22c55e', '#3b82f6', '#8b5cf6', '#f97316', '#1e293b', '#84cc16'];
+                
+                particle.style.setProperty('--x', `${x}vw`);
+                particle.style.setProperty('--y', `${y}vh`);
+                particle.style.left = '50%';
+                particle.style.top = '50%';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.width = `${Math.random() * 15 + 5}px`;
+                particle.style.height = `${Math.random() * 15 + 5}px`;
+                
+                winEffect.appendChild(particle);
+            }
+        }
+
+        // 创建彩带动画（3秒）
+        function createConfetti(count) {
+            const winEffect = document.getElementById('winEffect');
+            document.querySelectorAll('.confetti').forEach(c => c.remove());
+            
+            for (let i = 0; i < count; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                
+                // 随机位置和颜色
+                const left = Math.random() * 100;
+                const colors = ['#22c55e', '#3b82f6', '#8b5cf6', '#f97316', '#ec4899', '#84cc16'];
+                
+                confetti.style.left = `${left}vw`;
+                confetti.style.top = '-10px';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = `${Math.random() * 3}s`;
+                confetti.style.width = `${Math.random() * 20 + 5}px`;
+                confetti.style.height = `${Math.random() * 8 + 3}px`;
+                
+                winEffect.appendChild(confetti);
+            }
+        }
+
+        // 播放音效（模拟）
+        function playSound(type) {
+            console.log(`播放${type}音效`);
+        }
+
+        // 更新排行榜（核心逻辑）
+        function updateLeaderboard(difficulty, playerName, timeUsed) {
+            const leaderboardKey = difficulty;
+            const leaderboardData = gameState.leaderboardData[leaderboardKey];
+            
+            // 检查该玩家是否已有记录
+            if (leaderboardData[playerName]) {
+                // 仅当新用时更短时才更新
+                if (timeUsed < leaderboardData[playerName].time) {
+                    leaderboardData[playerName].time = timeUsed;
+                    leaderboardData[playerName].updateTime = new Date().toLocaleString();
+                }
+            } else {
+                // 新增玩家记录
+                leaderboardData[playerName] = {
+                    time: timeUsed,
+                    updateTime: new Date().toLocaleString()
+                };
+            }
+            
+            // 重新渲染对应难度的排行榜
+            renderLeaderboard(difficulty);
+        }
+
+        // 渲染指定难度的排行榜
+        function renderLeaderboard(difficulty) {
+            const difficultyMap = {
+                3: { id: 'easy', name: '简单' },
+                4: { id: 'medium', name: '中等' },
+                5: { id: 'hard', name: '困难' }
+            };
+            
+            const difficultyInfo = difficultyMap[difficulty];
+            const tbodyId = `rank-body-${difficultyInfo.id}`;
+            const historyId = `rank-history-${difficultyInfo.id}`;
+            
+            const tbody = document.getElementById(tbodyId);
+            const leaderboardData = gameState.leaderboardData[difficulty];
+            
+            // 清空表格
+            tbody.innerHTML = '';
+            
+            // 转换为数组并按用时升序排序
+            const playersArray = Object.entries(leaderboardData).map(([name, data]) => ({
+                name,
+                time: data.time,
+                updateTime: data.updateTime
+            })).sort((a, b) => a.time - b.time);
+            
+            // 渲染数据
+            if (playersArray.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="color: #94a3b8;">暂无记录</td></tr>';
+                document.getElementById(historyId).textContent = `记录数: 0 | 最快用时: --`;
+                return;
+            }
+            
+            // 渲染排名
+            playersArray.forEach((player, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td class="winner">${player.name}</td>
+                    <td class="${index === 0 ? 'best-time' : ''}">${player.time}s</td>
+                    <td>${player.updateTime}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 更新统计信息
+            const recordCount = playersArray.length;
+            const bestTime = playersArray[0].time + 's';
+            document.getElementById(historyId).textContent = `记录数: ${recordCount} | 最快用时: ${bestTime}`;
+        }
+
+        // 初始化所有排行榜
+        function initAllLeaderboards() {
+            [3, 4, 5].forEach(difficulty => {
+                renderLeaderboard(difficulty);
+            });
+        }
+
+        // 开始游戏
+        function startGame() {
+            // 验证姓名输入
+            const player1Name = document.getElementById('player1Name').value.trim();
+            const player2Name = document.getElementById('player2Name').value.trim();
+            
+            if (!player1Name) {
+                alert('请输入玩家1的姓名！');
+                document.getElementById('player1Name').focus();
+                return;
+            }
+            
+            if (!player2Name) {
+                alert('请输入玩家2的姓名！');
+                document.getElementById('player2Name').focus();
+                return;
+            }
+            
+            // 清除旧的特效和按钮
+            document.querySelectorAll('.rotate-btn-group').forEach(btn => btn.remove());
+            document.querySelectorAll('.particle, .confetti').forEach(p => p.remove());
+            
+            // 初始化游戏
+            initGame();
+        }
+
+        // 重置游戏
+        function resetGame() {
+            // 停止计时
+            clearInterval(gameState.timer);
+            gameState.timer = null;
+            
+            // 重置状态
+            gameState.isStarted = false;
+            gameState.winner = 0;
+            gameState.winnerName = '';
+            document.getElementById('game-status').textContent = '未开始';
+            document.getElementById('leaderboardsContainer').style.display = 'none';
+            document.getElementById('winEffect').style.display = 'none';
+            
+            // 清除特效
+            document.querySelectorAll('.particle, .confetti').forEach(p => p.remove());
+
+            // 重置玩家
+            for (let player = 1; player <= 2; player++) {
+                gameState.grids[player] = {
+                    numbers: [], target: [], startTime: 0, endTime: 0,
+                    score: 0, completed: false, rotateCount: 0,
+                    name: player === 1 ? (document.getElementById('player1Name').value.trim() || '玩家1') : (document.getElementById('player2Name').value.trim() || '玩家2')
+                };
+                document.getElementById(`score${player}`).textContent = '0';
+                document.getElementById(`time${player}`).textContent = '用时: 0s';
+                document.getElementById(`check${player}`).disabled = true;
+                document.getElementById(`player${player}`).classList.remove('winner', 'loser');
+                document.getElementById(`grid${player}`).innerHTML = '';
+                document.querySelectorAll(`#puzzle${player} .rotate-btn-group`).forEach(btn => btn.remove());
+                
+                // 恢复玩家标题
+                document.getElementById(`player${player}Title`).textContent = gameState.grids[player].name;
+            }
+
+            // 渲染空盘
+            const difficulty = parseInt(document.getElementById('difficulty').value);
+            for (let player = 1; player <= 2; player++) {
+                const gridElement = document.getElementById(`grid${player}`);
+                gridElement.style.gridTemplateColumns = `repeat(${difficulty}, ${CELL_SIZE}px)`;
+                gridElement.style.width = `${difficulty * CELL_SIZE + (difficulty - 1) * CELL_GAP + 16}px`;
+                gridElement.style.height = `${difficulty * CELL_SIZE + (difficulty - 1) * CELL_GAP + 16}px`;
+                
+                for (let i = 0; i < difficulty; i++) {
+                    for (let j = 0; j < difficulty; j++) {
+                        const cellWrapper = document.createElement('div');
+                        cellWrapper.className = 'cell-wrapper';
+                        const cell = document.createElement('div');
+                        cell.className = 'number-cell';
+                        cellWrapper.appendChild(cell);
+                        gridElement.appendChild(cellWrapper);
+                    }
+                }
+            }
+        }
+
+        // 页面加载初始化
+        window.onload = function() {
+            const difficulty = parseInt(document.getElementById('difficulty').value);
+            for (let player = 1; player <= 2; player++) {
+                const gridElement = document.getElementById(`grid${player}`);
+                gridElement.style.gridTemplateColumns = `repeat(${difficulty}, ${CELL_SIZE}px)`;
+                gridElement.style.width = `${difficulty * CELL_SIZE + (difficulty - 1) * CELL_GAP + 16}px`;
+                gridElement.style.height = `${difficulty * CELL_SIZE + (difficulty - 1) * CELL_GAP + 16}px`;
+                
+                for (let i = 0; i < difficulty; i++) {
+                    for (let j = 0; j < difficulty; j++) {
+                        const cellWrapper = document.createElement('div');
+                        cellWrapper.className = 'cell-wrapper';
+                        const cell = document.createElement('div');
+                        cell.className = 'number-cell';
+                        cellWrapper.appendChild(cell);
+                        gridElement.appendChild(cellWrapper);
+                    }
+                }
+                
+                document.getElementById(`check${player}`).disabled = true;
+                
+                // 初始化玩家标题
+                const playerName = document.getElementById(`player${player}Name`).value;
+                document.getElementById(`player${player}Title`).textContent = playerName;
+            }
+            
+            // 初始化排行榜
+            initAllLeaderboards();
+        };
+    </script>
+</body>
+</html>
